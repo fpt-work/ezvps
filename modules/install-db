@@ -1,0 +1,130 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC1090
+
+# -e option instructs bash to immediately exit if any command [1] has a non-zero exit status
+# We do not want users to end up with a partially working install, so we exit the script
+# instead of continuing the installation with something broken
+set -e
+
+######## VARIABLES #########
+# For better maintainability, we store as much information that can change in variables
+# This allows us to make a change in one place that can propagate to all instances of the variable
+# These variables should all be GLOBAL variables, written in CAPS
+# Local variables will be in lowercase and will exist only within functions
+# It's still a work in progress, so you may see some variance in this guideline until it is complete
+
+function __mysql {
+  echo "Adding the MySQL Community (5.7, 8.0) repository to your server ..."
+  echo "deb http://repo.mysql.com/apt/ubuntu `lsb_release -cs` mysql-5.7" > /etc/apt/sources.list.d/mysql57.list
+  echo "deb http://repo.mysql.com/apt/ubuntu `lsb_release -cs` mysql-8.0" > /etc/apt/sources.list.d/mysql80.list
+  apt-key adv --keyserver pgp.mit.edu --recv-keys 5072E1F5 >/dev/null 2>&1
+  echo "Adding the MySQL Community repository to your server ... DONE!!!"
+}
+
+function __percona-mysql {
+  echo "Adding the Percona MySQL latest repository to your server ..."
+  echo "deb http://repo.percona.com/apt `lsb_release -cs` main" > /etc/apt/sources.list.d/percona-mysql.list
+  apt-key adv --keyserver keys.gnupg.net --recv-keys 8507EFA5 >/dev/null 2>&1
+  echo "Adding the Percona MySQL latest repository to your server ... DONE!!!"
+}
+
+function __maridb {
+  echo "Adding the MariaDB latest repository to your server ..."
+  echo "deb [arch=amd64] http://mirrors.bkns.vn/mariadb/repo/10.5/ubuntu `lsb_release -cs` main" > /etc/apt/sources.list.d/MariaDB.list
+  apt-key adv --fetch-keys 'https://mariadb.org/mariadb_release_signing_key.asc' >/dev/null 2>&1
+  echo "Adding the MariaDB latest repository to your server ... DONE!!!"
+}
+
+function __install-mysql {
+  echo "Installing MySQL ..."
+  apt-get update >/dev/null 2>&1
+  debconf-set-selections <<< "mysql-community-server mysql-community-server/root-pass password $1"
+  debconf-set-selections <<< "mysql-community-server mysql-community-server/re-root-pass password $1"
+  DEBIAN_FRONTEND=noninteractive apt-get install mysql-server >/dev/null 2>&1
+  echo "Installing MySQL ... DONE!!!"
+}
+
+function __install-percona {
+  echo "Installing Percona MySQL ..."
+  apt-get update >/dev/null 2>&1
+  debconf-set-selections <<< "percona-server-server-8.0/root-pass password $1"
+  debconf-set-selections <<< "percona-server-server-8.0/re-root-pass password $1"
+  DEBIAN_FRONTEND=noninteractive apt-get install percona-server-server-8.0 >/dev/null 2>&1
+  echo "Installing Percona MySQL ... DONE!!!"
+}
+
+function __install-mariadb {
+  echo "Installing MariaDB ..."
+  apt-get update >/dev/null 2>&1
+  debconf-set-selections <<< "mariadb-server-10.3 mysql-server/root_password password $1"
+  debconf-set-selections <<< "mariadb-server-10.3 mysql-server/root_password_again password $1"
+  DEBIAN_FRONTEND=noninteractive apt-get install mariadb-server mariadb-client >/dev/null 2>&1
+  echo "Installing MariaDB ... DONE!!!"
+}
+
+function _select-mysql {
+  echo "Choose the MySQL Community version do you want to install ..."
+  local OPTIONS=("5.5" "5.6" "5.7" "8.0" "quit")
+  select version in ${OPTIONS[@]}
+  do
+    case $REPLY in
+      1)
+        __nginx-echo
+        # __nginx-stable
+        # __install-nginx
+        break
+      ;;
+      2)
+        __nginx-echo
+        # __nginx-latest
+        # __install-nginx
+        break
+      ;;
+      3)
+        break 2
+      ;;
+      *)
+        echo "Invalid option $REPLY"
+      ;;
+    esac
+  done
+}
+
+function _select-db {
+  echo "Choose the database version do you want to install ..."
+  local OPTIONS=("mysql-community" "percona-mysql" "mariadb" "quit")
+  select db in ${OPTIONS[@]}
+  do
+    case $REPLY in
+      1)
+        __nginx-echo
+        # __nginx-stable
+        # __install-nginx
+        break
+      ;;
+      2)
+        __nginx-echo
+        # __nginx-latest
+        # __install-nginx
+        break
+      ;;
+      3)
+        break 2
+      ;;
+      *)
+        echo "Invalid option $REPLY"
+      ;;
+    esac
+  done
+}
+
+function _db {
+  if __is-command mysqld
+  then
+    echo "MySQL/Percona MySQL/MariaDB is installed on your system"
+    _select-nginx
+  else
+    echo "Fresh installing nginx to your server"
+    _select-nginx
+  fi
+}

@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC1090
+
+# -e option instructs bash to immediately exit if any command [1] has a non-zero exit status
+# We do not want users to end up with a partially working install, so we exit the script
+# instead of continuing the installation with something broken
+set -e
+
+######## VARIABLES #########
+# For better maintainability, we store as much information that can change in variables
+# This allows us to make a change in one place that can propagate to all instances of the variable
+# These variables should all be GLOBAL variables, written in CAPS
+# Local variables will be in lowercase and will exist only within functions
+# It's still a work in progress, so you may see some variance in this guideline until it is complete
+
+function __nginx-echo {
+  echo -e "\e[1;32m Adding the nginx stable repository to your server ... \e[0m"
+  echo -e "\e[1;32m Adding the nginx stable repository to your server ... DONE!!! \e[0m"
+}
+
+function __nginx-stable {
+  echo "Adding the nginx stable repository to your server ..."
+  echo "deb http://nginx.org/packages/ubuntu `lsb_release -cs` nginx" > /etc/apt/sources.list.d/nginx.list
+  curl -fsSL https://nginx.org/keys/nginx_signing.key | apt-key add - >/dev/null 2>&1
+  echo "Adding the nginx stable repository to your server ... DONE!!!"
+}
+
+function __nginx-latest {
+  echo "Adding the nginx latest repository to your server ..."
+  echo "deb http://nginx.org/packages/mainline/ubuntu `lsb_release -cs` nginx" > /etc/apt/sources.list.d/nginx.list
+  curl -fsSL https://nginx.org/keys/nginx_signing.key | apt-key add - >/dev/null 2>&1
+  echo "Adding the nginx latest repository to your server ... DONE!!!"
+}
+
+function __install-nginx {
+  echo "Installing nginx ..."
+  apt-get update >/dev/null 2>&1
+  apt-get install nginx >/dev/null 2>&1
+  echo "Installing nginx ... DONE!!!"
+}
+
+function _select-nginx {
+  echo "Choose the nginx version do you want to install ..."
+  local OPTIONS=("stable" "latest" "quit")
+  select version in ${OPTIONS[@]}
+  do
+    case $REPLY in
+      1)
+        __nginx-echo
+        # __nginx-stable
+        # __install-nginx
+        break
+      ;;
+      2)
+        __nginx-echo
+        # __nginx-latest
+        # __install-nginx
+        break
+      ;;
+      3)
+        break 2
+      ;;
+      *)
+        echo "Invalid option $REPLY"
+      ;;
+    esac
+  done
+}
+
+function _nginx {
+  if __is-command nginx
+  then
+    echo "Nginx is installed on your system, please upgrade it to stable/latest version"
+    _select-nginx
+  else
+    echo "Fresh installing nginx to your server"
+    _select-nginx
+  fi
+}

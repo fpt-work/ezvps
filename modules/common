@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC1090
+
+# -e option instructs bash to immediately exit if any command [1] has a non-zero exit status
+# We do not want users to end up with a partially working install, so we exit the script
+# instead of continuing the installation with something broken
+set -e
+
+######## VARIABLES #########
+# For better maintainability, we store as much information that can change in variables
+# This allows us to make a change in one place that can propagate to all instances of the variable
+# These variables should all be GLOBAL variables, written in CAPS
+# Local variables will be in lowercase and will exist only within functions
+# It's still a work in progress, so you may see some variance in this guideline until it is complete
+
+function __check-root {
+  if [[ $EUID -ne 0 ]]
+  then
+    echo "Your must be run as root" 
+    exit 1
+  fi
+}
+
+function __is-command {
+  # Checks for existence of string passed in as only function argument.
+  # Exit value of 0 when exists, 1 if not exists. Value is the result
+  # of the `command` shell built-in call.
+  local check_command="$1"
+  command -v "${check_command}" >/dev/null 2>&1
+}
